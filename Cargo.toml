@@ -5,7 +5,7 @@ edition = "2024"
 rust-version = "1.86.0"
 description = "Framework-agnostic Rust authentication crate inspired by awesome-node-auth"
 license = "MIT"
-repository = "https://github.com/nik2208/awesome-rust-auth"
+repository = "https://github.com/awesome-lang-auth/awesome-rust-auth"
 
 [features]
 default = []
