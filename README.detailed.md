@@ -3,10 +3,10 @@
 > **Quick-start README** → [README.md](./README.md)
 
 ![crates.io](https://img.shields.io/crates/v/awesome-rust-auth)
-![license](https://img.shields.io/github/license/nik2208/awesome-rust-auth)
-![github stars](https://img.shields.io/github/stars/nik2208/awesome-rust-auth)
+![license](https://img.shields.io/github/license/awesome-lang-auth/awesome-rust-auth)
+![github stars](https://img.shields.io/github/stars/awesome-lang-auth/awesome-rust-auth)
 
-A production-ready, **database-agnostic** JWT authentication library for Rust, inspired by [awesome-node-auth](https://github.com/nik2208/awesome-node-auth) and compatible with its REST contract.
+A production-ready, **database-agnostic** JWT authentication library for Rust, inspired by [awesome-node-auth](https://github.com/awesome-lang-auth/awesome-node-auth) and compatible with its REST contract.
 
 It delivers a 360-degree authentication and access-control layer that is completely decoupled from any specific framework or database through a simple trait-based interface pattern.
 
