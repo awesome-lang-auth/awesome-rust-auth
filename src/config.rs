@@ -14,6 +14,12 @@ pub struct AuthConfig {
     pub auth_js_path: String,
     pub built_in_locales: Vec<String>,
     pub enable_idp_mode: bool,
+    /// When `true`, [`AuthService::register`](crate::AuthService::register)
+    /// also opens a session for the new account, exactly as
+    /// [`AuthService::login`](crate::AuthService::login) does (same token
+    /// pair, same session row, same `Login` event). Default `false`: register
+    /// only creates the account and the client logs in afterwards.
+    pub issue_session_on_register: bool,
 }
 
 impl AuthConfig {
@@ -34,6 +40,7 @@ pub struct AuthConfigBuilder {
     auth_js_path: String,
     built_in_locales: Vec<String>,
     enable_idp_mode: bool,
+    issue_session_on_register: bool,
 }
 
 impl Default for AuthConfigBuilder {
@@ -49,6 +56,7 @@ impl Default for AuthConfigBuilder {
             auth_js_path: "/auth/ui/auth.js".to_string(),
             built_in_locales: vec!["en".to_string(), "it".to_string()],
             enable_idp_mode: false,
+            issue_session_on_register: false,
         }
     }
 }
@@ -104,6 +112,13 @@ impl AuthConfigBuilder {
         self
     }
 
+    /// Lets [`AuthService::register`](crate::AuthService::register) open a
+    /// session for the new account, the way login does (default: `false`).
+    pub fn issue_session_on_register(mut self, enabled: bool) -> Self {
+        self.issue_session_on_register = enabled;
+        self
+    }
+
     pub fn build(self) -> AuthResult<AuthConfig> {
         if self.jwt_secret.len() < 16 {
             return Err(AuthError::Config(
@@ -122,6 +137,7 @@ impl AuthConfigBuilder {
             auth_js_path: self.auth_js_path,
             built_in_locales: self.built_in_locales,
             enable_idp_mode: self.enable_idp_mode,
+            issue_session_on_register: self.issue_session_on_register,
         })
     }
 }

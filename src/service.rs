@@ -30,6 +30,16 @@ struct Claims {
     aud: String,
 }
 
+/// Result of [`AuthService::register`].
+#[derive(Debug, Clone)]
+pub struct RegisterOutcome {
+    /// The account that was created.
+    pub user: User,
+    /// The token pair [`AuthService::login`] would return, when
+    /// [`AuthConfig::issue_session_on_register`] is on; `None` otherwise.
+    pub session: Option<(AccessToken, RefreshToken)>,
+}
+
 /// Core authentication service (email/password + token management).
 #[derive(Clone)]
 pub struct AuthService<U, S, T, E>
@@ -191,6 +201,35 @@ where
             .verify_password(input.password.as_bytes(), &parsed)
             .map_err(|_| AuthError::InvalidCredentials)?;
 
+        self.open_session(&user).await
+    }
+
+    /// Creates an account like [`signup`](Self::signup) and, when
+    /// [`AuthConfig::issue_session_on_register`] is on, also opens a session
+    /// for it exactly as [`login`](Self::login) does: same token pair, same
+    /// session row, same `Login` event. With the option off (the default) no
+    /// session is opened and the client logs in afterwards.
+    ///
+    /// A refused registration (invalid input, duplicate email, store error)
+    /// returns the error and opens nothing.
+    ///
+    /// This crate's login does not gate on `is_email_verified`. An application
+    /// that refuses login to unverified accounts must leave this option off,
+    /// or register would bypass its verification gate.
+    pub async fn register(&self, input: SignupInput) -> AuthResult<RegisterOutcome> {
+        let user = self.signup(input).await?;
+        let session = if self.config.issue_session_on_register {
+            Some(self.open_session(&user).await?)
+        } else {
+            None
+        };
+        Ok(RegisterOutcome { user, session })
+    }
+
+    /// Opens a session for an authenticated user: session row, token pair,
+    /// `Login` event. Shared by [`login`](Self::login) and
+    /// [`register`](Self::register).
+    async fn open_session(&self, user: &User) -> AuthResult<(AccessToken, RefreshToken)> {
         let now = OffsetDateTime::now_utc();
         let session = Session {
             id: Uuid::new_v4(),
@@ -208,8 +247,8 @@ where
 
         self.emit_event(
             EventType::Login,
-            Some(user.tenant_id),
-            Some(user.id),
+            Some(user.tenant_id.clone()),
+            Some(user.id.clone()),
             serde_json::json!({"session_id": session.id}),
         )
         .await?;
