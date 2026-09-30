@@ -31,7 +31,7 @@ pub use models::{
     User, UserId,
 };
 pub use otp::OtpService;
-pub use service::AuthService;
+pub use service::{AuthService, RegisterOutcome};
 
 pub mod adapters {
     #[cfg(feature = "axum")]
