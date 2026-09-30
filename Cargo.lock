@@ -298,6 +298,7 @@ dependencies = [
  "time",
  "tokio",
  "totp-rs",
+ "tower",
  "utoipa",
  "uuid",
  "validator",
