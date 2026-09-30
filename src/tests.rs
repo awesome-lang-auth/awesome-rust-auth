@@ -349,13 +349,19 @@ mod register_session {
             .rotate_refresh_token(&refresh.token)
             .await
             .expect("refresh token issued on register should rotate");
-        assert_eq!(h.svc.list_sessions(&outcome.user.id).await.unwrap().len(), 1);
+        assert_eq!(
+            h.svc.list_sessions(&outcome.user.id).await.unwrap().len(),
+            1
+        );
     }
 
     #[tokio::test]
     async fn register_on_refused_registration_issues_nothing() {
         let h = harness(true);
-        h.svc.register(signup_input()).await.expect("first register");
+        h.svc
+            .register(signup_input())
+            .await
+            .expect("first register");
         assert_eq!(h.sessions.rows().len(), 1);
 
         // Duplicate account.
