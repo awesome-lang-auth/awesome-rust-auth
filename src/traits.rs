@@ -1,3 +1,10 @@
+// `#[async_trait]` (0.1.89, the version in Cargo.lock) puts a bare `#[must_use]`
+// on every trait method it rewrites, and the rewritten return type,
+// `Pin<Box<dyn Future>>`, is already `#[must_use]`. Since Rust 1.99, clippy
+// reports that as `double_must_use`. The attribute comes from the macro, not
+// from this file, so the lint is silenced for this module only.
+#![allow(clippy::double_must_use)]
+
 use async_trait::async_trait;
 
 use crate::{error::AuthResult, models::*};

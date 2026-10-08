@@ -62,6 +62,14 @@ let config = AuthConfig::builder()
 
 ## Adapter usage
 
+Each adapter serves the browser client at `/auth/ui/auth.js`, the node-shaped
+`/auth/ui/config`, the UI pages under `/auth/ui` and the admin UI at
+`/auth/admin`. To move all of them under another prefix, build an `AuthConfig`
+with `.api_prefix("/api/auth")` and use `router_with_config(&config)`,
+`scope_with_config(&config)` or `routes_with_config(&config)`.
+`.ui_headless(true)` turns the pages off (404) and keeps `auth.js` and
+`/ui/config` served.
+
 ### Axum
 
 ```rust
