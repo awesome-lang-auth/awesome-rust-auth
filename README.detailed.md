@@ -325,6 +325,8 @@ let config = AuthConfig::builder()
     .built_in_locales(vec!["en".to_string(), "it".to_string()])
     // Enable OIDC identity-provider endpoints (default: false)
     .enable_idp_mode(true)
+    // Let `AuthService::register` also open a session, as login does (default: false)
+    .issue_session_on_register(false)
     .build()?;
 # Ok::<(), awesome_rust_auth::AuthError>(())
 ```
@@ -371,6 +373,34 @@ let user = svc.signup(SignupInput {
 ```
 
 Password is hashed with **Argon2id** using a random 16-byte salt. Emits `EventType::Signup`.
+
+### Register (signup that may open a session)
+
+`register` is the entry point for a registration route. It creates the account
+exactly like `signup`, then follows `AuthConfig::issue_session_on_register`:
+
+```rust
+let outcome = svc.register(SignupInput {
+    email: "alice@example.com".into(),
+    password: "s3cur3P@ssw0rd".into(),
+    tenant_id: "tenant-abc".into(),
+}).await?;
+
+// outcome.user    — the created account
+// outcome.session — None when the option is off (the default): the client logs in afterwards.
+//                   Some((access, refresh)) when it is on: the same pair, session row and
+//                   `EventType::Login` that `login` produces for this account.
+```
+
+| `issue_session_on_register` | What register delivers |
+|---|---|
+| `false` (default) | The account only. Answer `201 {"success": true, "userId": "<id>"}`; the client calls `POST /login` next. |
+| `true` | The account plus a session. Deliver `outcome.session` the way your login route delivers the login pair (cookies, or `accessToken` / `refreshToken` in the body for `X-Auth-Strategy: bearer`), on top of the same `201` body. |
+
+A refused registration (invalid input, duplicate email) returns an error and opens no session.
+The crate's `login` does not check `is_email_verified`; if your application refuses login to
+unverified accounts, keep this option off, otherwise registration would bypass that gate.
+Same option and behaviour across the family (origin: awesome-go-auth #21).
 
 ### Login
 
