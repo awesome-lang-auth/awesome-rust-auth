@@ -104,8 +104,8 @@ with `.api_prefix("/api/auth")` and use `router_with_config(&config)`,
 
 This crate targets the same REST shape and token conventions used by:
 
-- `ng-awesome-node-auth`
-- `awesome-node-auth-flutter`
+- [`@awesome-lang-auth/angular`](https://github.com/awesome-lang-auth/awesome-angular-auth)
+- [`awesome_flutter_auth`](https://github.com/awesome-lang-auth/awesome-flutter-auth)
 
 Current explicit deviations (also available via `compatibility_notes()`):
 
