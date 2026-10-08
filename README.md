@@ -96,8 +96,8 @@ let config = AuthConfig::builder()
 
 This crate targets the same REST shape and token conventions used by:
 
-- `ng-awesome-node-auth`
-- `awesome-node-auth-flutter`
+- [`@awesome-lang-auth/angular`](https://github.com/awesome-lang-auth/awesome-angular-auth)
+- [`awesome_flutter_auth`](https://github.com/awesome-lang-auth/awesome-flutter-auth)
 
 Current explicit deviations (also available via `compatibility_notes()`):
 

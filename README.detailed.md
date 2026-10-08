@@ -1072,8 +1072,8 @@ cargo run --example axum-postgres --features axum
 
 This crate targets the same REST shape and token conventions as:
 
-- `ng-awesome-node-auth`
-- `awesome-node-auth-flutter`
+- [`@awesome-lang-auth/angular`](https://github.com/awesome-lang-auth/awesome-angular-auth)
+- [`awesome_flutter_auth`](https://github.com/awesome-lang-auth/awesome-flutter-auth)
 
 Explicit known deviations (also available via `api_contract::compatibility_notes()`):
 
