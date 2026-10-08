@@ -315,12 +315,12 @@ let config = AuthConfig::builder()
     .access_token_ttl(Duration::from_secs(15 * 60))
     // Refresh token TTL (default: 30 days)
     .refresh_token_ttl(Duration::from_secs(30 * 24 * 60 * 60))
-    // Path prefix for the embedded admin UI (default: "/auth/admin")
-    .admin_ui_path("/auth/admin")
-    // Path prefix for the built-in auth UI (default: "/auth/ui")
-    .auth_ui_path("/auth/ui")
-    // Path to the auth.js runtime (default: "/auth/ui/auth.js")
-    .auth_js_path("/auth/ui/auth.js")
+    // Mount prefix of every adapter route: the API, the built-in UI with
+    // auth.js and /ui/config, and the admin UI (default: "/auth")
+    .api_prefix("/auth")
+    // Headless UI: the UI pages answer 404, auth.js and /ui/config stay
+    // served (default: false)
+    .ui_headless(false)
     // Locales for built-in email templates (default: ["en", "it"])
     .built_in_locales(vec!["en".to_string(), "it".to_string()])
     // Enable OIDC identity-provider endpoints (default: false)
@@ -328,6 +328,18 @@ let config = AuthConfig::builder()
     .build()?;
 # Ok::<(), awesome_rust_auth::AuthError>(())
 ```
+
+`api_prefix` is the only route option. Everything the adapters serve under
+`/auth` moves with it: `<prefix>/ui/auth.js`, `<prefix>/ui/config` (whose
+`apiPrefix` field reports the prefix), the UI pages at `<prefix>/ui/*` and the
+admin UI at `<prefix>/admin`. `/health` is not prefixed. The derived paths are
+available as `config.auth_ui_path()` (`<prefix>/ui`), `config.auth_js_path()`
+(`<prefix>/ui/auth.js`) and `config.admin_ui_path()` (`<prefix>/admin`).
+
+`build()` normalises the prefix: it adds the leading `/` and drops trailing or
+doubled ones, so `"api/auth/"` becomes `"/api/auth"`. `"/"` (or `""`) mounts
+the routes at the root (`/ui/auth.js`). A segment may contain only ASCII
+letters, digits, `-`, `.`, `_` and `~`; anything else is an `AuthError::Config`.
 
 ### JWT Claims Structure
 
@@ -866,6 +878,8 @@ Every service method emits a domain event through both `TelemetryStore::persist_
 ## Built-in UI — `ui`
 
 The crate ships a ready-to-serve authentication UI and admin panel as embedded static assets.
+The paths below use the default prefix `/auth`; with `api_prefix` set they all
+move under that prefix (see [Configuration](#configuration-authconfig)).
 
 ### Auth UI pages (served at `/auth/ui/`)
 
@@ -891,7 +905,10 @@ The crate ships a ready-to-serve authentication UI and admin panel as embedded s
 
 ### Self-configuring `/auth/ui/config` endpoint
 
-The UI bootstraps by fetching `/auth/ui/config` at startup. The default config JSON is available at `ui::AUTH_UI_CONFIG_JSON` and includes:
+The UI bootstraps by fetching `/auth/ui/config` at startup. The adapters serve
+`ui::auth_ui_config(prefix, headless)`: the document below with `apiPrefix` set
+to the prefix and `headless` to `ui_headless`. The default document (prefix
+`/auth`, pages on) is also available as `ui::AUTH_UI_CONFIG_JSON`:
 
 ```json
 {
@@ -917,11 +934,18 @@ The UI bootstraps by fetching `/auth/ui/config` at startup. The default config J
 }
 ```
 
-Set `"headless": true` to disable the built-in UI pages and use the `auth.js` runtime only (SPA mode).
+`auth.js`, the other UI assets and `/auth/ui/config` are served whenever an
+adapter router is mounted. To use the `auth.js` runtime only (SPA mode), build
+the config with `.ui_headless(true)`: the pages (`/auth/ui`, `/auth/ui/login`,
+…) then answer 404, while the assets and `/auth/ui/config` (now reporting
+`"headless": true`) are still served, like `ui.headless` in `awesome-node-auth`.
 
 ### Admin UI (served at `/auth/admin/`)
 
-The admin panel is injected via `ui::render_admin_html()` and bootstraps from `window.__ADMIN_CONFIG__`:
+The admin panel is injected via `ui::render_admin_html_with_prefix(prefix)`
+(`ui::render_admin_html()` for the default prefix) and bootstraps from
+`window.__ADMIN_CONFIG__`; its `base`, `uploadBaseUrl` and `authApiPrefix`
+follow the prefix:
 
 ```json
 {
@@ -942,7 +966,7 @@ The admin panel is injected via `ui::render_admin_html()` and bootstraps from `w
 Use the `ui` module helpers directly in your framework handler:
 
 ```rust
-use awesome_rust_auth::ui::{auth_ui_asset, auth_ui_page, render_admin_html};
+use awesome_rust_auth::ui::{auth_ui_asset, auth_ui_config, auth_ui_page, render_admin_html};
 
 // Serve a UI page
 if let Some(html) = auth_ui_page("login") {
@@ -953,6 +977,9 @@ if let Some(html) = auth_ui_page("login") {
 if let Some((content_type, content)) = auth_ui_asset("auth.js") {
     // respond with content, content-type
 }
+
+// Serve <prefix>/ui/config (prefix "/auth", pages on)
+let ui_config = auth_ui_config("/auth", false);
 
 // Serve the admin panel
 let admin_html = render_admin_html();
@@ -977,12 +1004,30 @@ The spec includes `POST /auth/signup` and `POST /auth/login` by default. Extend 
 
 ## Framework Adapters
 
+Each adapter has a zero-argument constructor that uses the default prefix
+`/auth` with the UI pages on, and a `*_with_config(&AuthConfig)` constructor
+that reads `api_prefix` and `ui_headless`. Both serve the same routes:
+
+| Route                                              | Served                          |
+|----------------------------------------------------|---------------------------------|
+| `GET /health`                                      | always (not prefixed)           |
+| `GET <prefix>/ui/auth.js`, `base.css`, `auth.css`, `ui-i18n-keys.json` | always  |
+| `GET <prefix>/ui/config`                           | always                          |
+| `GET <prefix>/ui`, `GET <prefix>/ui/<page>`        | unless `ui_headless` (then 404) |
+| `GET <prefix>/admin`, `GET <prefix>/admin/assets/{admin.css,admin.js}` | always  |
+| `POST <prefix>/login`                              | placeholder (axum and actix)    |
+
 ### Axum (feature = `"axum"`)
 
 ```rust
 #[cfg(feature = "axum")]
 {
     let router = awesome_rust_auth::adapters::axum::router();
+    // or, with every route under /api/auth:
+    let config = awesome_rust_auth::AuthConfig::builder()
+        .api_prefix("/api/auth")
+        .build()?;
+    let router = awesome_rust_auth::adapters::axum::router_with_config(&config);
     // mount under your axum Router
 }
 ```
@@ -993,6 +1038,7 @@ The spec includes `POST /auth/signup` and `POST /auth/login` by default. Extend 
 #[cfg(feature = "actix")]
 {
     let scope = awesome_rust_auth::adapters::actix::scope();
+    // or: awesome_rust_auth::adapters::actix::scope_with_config(&config)
     // mount under your actix-web App
 }
 ```
@@ -1003,6 +1049,7 @@ The spec includes `POST /auth/signup` and `POST /auth/login` by default. Extend 
 #[cfg(feature = "warp")]
 {
     let routes = awesome_rust_auth::adapters::warp::routes();
+    // or: awesome_rust_auth::adapters::warp::routes_with_config(&config)
     // compose with your warp filters
 }
 ```
